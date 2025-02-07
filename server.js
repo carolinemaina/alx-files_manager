@@ -1,6 +1,6 @@
 // server.js
 import express from 'express';
-import routes from './routes/index.js'; // Import routes
+import routes from './routes/index';  // Removed .js extension
 
 // Initialize Express app
 const app = express();
