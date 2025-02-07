@@ -1,15 +1,18 @@
+// server.js
 import express from 'express';
-import controllerRouting from './routes/index';
+import routes from './routes/index.js'; // Import routes
 
+// Initialize Express app
 const app = express();
+
+// Set port from environment variable or default to 5000
 const port = process.env.PORT || 5000;
 
-app.use(express.json());
+// Load all routes
+app.use(routes);
 
-controllerRouting(app);
-
+// Start server
 app.listen(port, () => {
   console.log(`Server running on port ${port}`);
 });
 
-export default app;

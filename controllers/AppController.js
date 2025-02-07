@@ -1,32 +1,59 @@
-import redisClient from '../utils/redis';
-import dbClient from '../utils/db';
+// controllers/AppController.js
+import { MongoClient } from 'mongodb';
+import redis from 'redis';
 
-class AppController {
-  /**
-   * should return if Redis is alive and if the DB is alive too
-   * by using the 2 utils created previously:
-   * { "redis": true, "db": true } with a status code 200
-   */
-  static getStatus(request, response) {
-    const status = {
-      redis: redisClient.isAlive(),
-      db: dbClient.isAlive(),
-    };
-    response.status(200).send(status);
-  }
+// MongoDB and Redis clients initialization
+const mongoClient = new MongoClient('mongodb://localhost:27017');
+const redisClient = redis.createClient();
 
-  /**
-   * should return the number of users and files in DB:
-   * { "users": 12, "files": 1231 }
-   *  with a status code 200
-   */
-  static async getStats(request, response) {
-    const stats = {
-      users: await dbClient.nbUsers(),
-      files: await dbClient.nbFiles(),
-    };
-    response.status(200).send(stats);
+// Health check for Redis and DB status
+const checkRedis = async () => {
+  return new Promise((resolve, reject) => {
+    redisClient.ping((err, res) => {
+      if (err) reject(false);
+      resolve(res === 'PONG');
+    });
+  });
+};
+
+const checkDB = async () => {
+  try {
+    await mongoClient.connect();
+    return true;
+  } catch (err) {
+    return false;
   }
-}
+};
+
+const AppController = {
+  // GET /status => AppController.getStatus
+  getStatus: async (req, res) => {
+    const redisStatus = await checkRedis();
+    const dbStatus = await checkDB();
+
+    return res.status(200).json({
+      redis: redisStatus,
+      db: dbStatus,
+    });
+  },
+
+  // GET /stats => AppController.getStats
+  getStats: async (req, res) => {
+    try {
+      await mongoClient.connect();
+      const db = mongoClient.db('files_manager');
+      const usersCount = await db.collection('users').countDocuments();
+      const filesCount = await db.collection('files').countDocuments();
+
+      return res.status(200).json({
+        users: usersCount,
+        files: filesCount,
+      });
+    } catch (err) {
+      return res.status(500).json({ error: 'Failed to fetch stats' });
+    }
+  },
+};
 
 export default AppController;
+
